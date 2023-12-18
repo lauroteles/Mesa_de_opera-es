@@ -814,7 +814,7 @@ if selecionar == 'Divisão de operadores':
         st.markdown("<br>",unsafe_allow_html=True)
         st.markdown("<br>",unsafe_allow_html=True)
 
-        col1,col2 = st.columns(2)
+        col1,col2,col3,col4,col5 = st.columns(5)
 
         class Contas_Operadas:
             def __init__(self, numero_da_conta, nome_do_cliente, operador_da_conta, horario_da_operação):
