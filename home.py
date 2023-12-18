@@ -14,28 +14,9 @@ from io import BytesIO
 import io
 import xlsxwriter as xlsxwriter
 import datetime
-import matplotlib
-import matplotlib.pyplot as plt
-import mplcursors
-st.set_page_config(layout='wide')
-st.markdown(
-    """
-    <style>
+import time
 
-    body{    
-        background-image:url('Bluemetrix.jpg');
-        background-size:cover;
-        position: fixed;
-        top:0;
-        left:0;
-        width:100vw;
-        height:100vh;
-        opacity:0.7
-        }
-    </style>
-    """,
-unsafe_allow_html=True
-)
+st.set_page_config(layout='wide')
 
 paginas = 'Carteiras','Produtos','Home','Divisão de operadores'
 selecionar = st.sidebar.radio('Selecione uma opção', paginas)
@@ -53,7 +34,7 @@ controle_original = le_excel('controle.xlsx')
 saldo_original = le_excel('Saldo.xlsx')
 posicao_original = le_excel('Posição.xlsx')
 produtos_original = le_excel('Produtos.xlsx')
-cura_original = le_excel('curva.xlsx')
+cura_original = le_excel('Curva_comdinheiro.xlsx')
 
 pl = pl_original.copy()
 controle = controle_original.copy()
@@ -107,22 +88,63 @@ income = {
     'FundoDI':3
     }
 
+small_caps = {
+    'BPAC11':10,
+    'ENEV3':4,
+    'HBSA3':7,
+    'IFCM3':5,
+    'JALL3':10,
+    'KEPL3':12,
+    'MYPK3':5,
+    'PRIO3':12,
+    'SIMH3':8,
+    'TASA4':8,
+    'TUPY3':11,
+    'WIZC3':5,
+}
+fii = {
+    'BTLG11':22.30,
+    'Caixa':6,
+    'HGLG11':22.30,
+    'KNCA11':7.25,
+   ' MALL11':7.75,
+   ' PLCR11':13.57,
+    'RURA11':7.26,
+    'TRXF11':13.57
+}
 
+dividendos = {
+    'TAEE11':9,
+   ' VIVT3':12,
+    'BBSE3':17,
+    'ABCB4':16,
+   ' VBBR3':15,
+   ' CPLE6':16,
+   ' TRPL4':5
+    }
 
+small_caps_dataframe = pd.DataFrame(list(small_caps.items()),columns=['Ativo','Proporção'])
+small_caps_dataframe['Proporção'] = small_caps_dataframe['Proporção']/100    
+    #---------------------- Small caps
+
+dividendos_dataframe = pd.DataFrame(list(dividendos.items()),columns=['Ativo','Proporção'])
+dividendos_dataframe['Proporção'] = dividendos_dataframe['Proporção']/100
+        #---------------------- Dividendos
+
+fii_dataframe = pd.DataFrame(list(fii.items()),columns=['Ativo','Proporção'])
+fii_dataframe['Proporção'] = fii_dataframe['Proporção']/100 
+    #---------------------- FII
 
 income_graf = pd.DataFrame(list(income.items()),columns=['Ativo','Proporção'])
 income_graf['Proporção'] = income_graf['Proporção']/100
     
     #---------------------- Moderada
-         
-
 moderada = {ativo:0.75*income.get(ativo,0)+0.25*equities.get(ativo,0) for ativo in set(income)|set(equities)}
 moderada_grafico = pd.DataFrame(list(moderada.items()),columns=['Ativo','Proporção'])
 moderada_grafico['Proporção'] = moderada_grafico['Proporção']/100
 
    
-    #-------------------- Arrojada
-      
+    #-------------------- Arrojada     
 arrojada = {ativo:0.60*income.get(ativo,0)+0.40*equities.get(ativo,0) for ativo in set(income)|set(equities)}   
 arrojada_graf = pd.DataFrame(list(arrojada.items()),columns=['Ativo','Proporção'])
 arrojada_graf['Proporção'] = arrojada_graf['Proporção']/100
@@ -195,9 +217,15 @@ if selecionar == 'Carteiras':
         elif valor_coluna == 'INC':
             moderada_graf = income_graf
         elif valor_coluna == 'EQT':
-            moderada_graf = equities_graf            
+            moderada_graf = equities_graf 
+        elif valor_coluna == 'SMLL':
+            moderada_graf = small_caps_dataframe                  
+        elif valor_coluna == 'FII':
+            moderada_graf = fii_dataframe   
+        elif valor_coluna == 'DIV':
+            moderada_graf = dividendos_dataframe   
         else:
-            moderada_graf = moderada_grafico
+           st.success('Essa carteira e exeção')
     
         
         st.text('Valor total da carteira')
@@ -398,7 +426,6 @@ if selecionar == 'Carteiras':
             
             # Use io.BytesIO para criar um buffer de bytes
             output4 = io.BytesIO()
-            st.markdown(" Download Basket ")
             # Salve o DataFrame no buffer no formato XLSX
             with pd.ExcelWriter(output4, engine='xlsxwriter') as writer:
                 basket.to_excel(writer,
@@ -407,7 +434,7 @@ if selecionar == 'Carteiras':
             
             # Crie um link para download
             output4.seek(0)
-            st.download_button(
+            st.download_button(type='primary',
                 label="Basket Download",
                 data=output4,
                 file_name=nome_arquivo,
@@ -459,7 +486,7 @@ if selecionar == 'Carteiras':
 #---------------------------------- ---------------------------------- ---------------------------------- ---------------------------------- 
 
 if selecionar == 'Produtos':
-    #st.balloons()
+    st.balloons()
     produtos = pd.read_excel('Produtos.xlsx')
     produtos = produtos[[
        'PRODUTO', 'PRAZO/VENCIMENTO', 'TAXA','TAXA EQ. CDB']]
@@ -524,14 +551,14 @@ if selecionar == 'Produtos':
  #   produtos['prazo_em_anos'] = pd.to_datetime(produtos['PRAZO/VENCIMENTO'], unit='D').dt.to_period('M')
 
     produtos['Vencimento'] = datetime.datetime.now() + pd.to_timedelta(produtos['PRAZO/VENCIMENTO'],unit='D')
-    produtos['Vencimento'] = produtos['Vencimento'].dt.strftime('%d-%m-%Y')
-
+    produtos['Vencimento'] = produtos['Vencimento'].dt.strftime('%Y-%m-%d')
+                                                                
     #----------------------------------
     #Calculando a curva 
-    curva_base = pd.read_excel('curva.xlsx')
+
     fig2=go.Figure()
-    fig2.add_traces(go.Scatter(x=curva_base['Vertices'],
-                        y=curva_base['ETTJ PREF'],
+    fig2.add_traces(go.Scatter(x=curva_base['Data'],
+                        y=curva_base['Taxa Spot'],
                         mode='lines',
                         name='PREF',
                         line=dict(color='orange')
@@ -550,7 +577,7 @@ if selecionar == 'Produtos':
     if pre_pos == 'PRÉ':    
         fig.add_trace(
             go.Scatter(
-                x=produtos['PRAZO/VENCIMENTO'],
+                x=produtos['Vencimento'],
                 y=produtos['TAXA EQ. CDB'],
                 mode='markers',
                 marker=dict(
@@ -558,10 +585,11 @@ if selecionar == 'Produtos':
                 color = 'grey'     
                 ),
                 text=produtos.apply(
-                    lambda row: f'O vencimento e em:  {row["Vencimento"]}  dias   e a Taxa do produto é:  {row["TAXA EQ. CDB"]:.2f}%  e o Banco emissor:  {row["PRODUTO"]}',axis=1),
+                    lambda row: f'O vencimento e em:  **{row["Vencimento"]}** e a Taxa do produto é:  **{row["TAXA EQ. CDB"]:.2f}%**  e o Banco emissor:  **{row["PRODUTO"]}**',axis=1),
                 
             )
         )
+
     else:
         fig.add_trace(
             go.Scatter(
@@ -572,9 +600,9 @@ if selecionar == 'Produtos':
                 size = 8,
                 color = 'grey'     
                 ),
-                text=produtos.apply(
+               text=produtos.apply(
                     lambda row: f'O praze de vencimento e em:  {row["Vencimento"]}  dias   e a Taxa do produto é:  {row["TAXA EQ. CDB"]:.2f}%  e o Banco emissor:  {row["PRODUTO"]}',axis=1),
-                
+               
         )
     )
     fig.update_layout(
@@ -615,12 +643,6 @@ if selecionar == 'Produtos':
 #---------------------------------- ---------------------------------- ---------------------------------- ---------------------------------- 
 
 if selecionar == 'Divisão de operadores':
-
-    #----------
-    # Upload files direct in streamlit
-
-
-    
 
 
         #####       Limpando arquivo e retirando colunas
@@ -671,7 +693,7 @@ if selecionar == 'Divisão de operadores':
         )
             ####        Mesclando arquivos e adicionando variaveis
 
-# Filtros para adicionar operadores
+    # Filtros para adicionar operadores
 
         #Filtro Breno
         filtro = (arquivo_final['VALOR']<200000) & (arquivo_final['Operador']=='Edu')
@@ -736,9 +758,8 @@ if selecionar == 'Divisão de operadores':
 
         
         arquivo_final2 = arquivo_final2.iloc[:,[2,1,11,5,6,7,8,9,10,4,3]]
-        #Alterações dia 25/10
 
-        ######### Manipulacao do streamlit ##############
+
         
         arquivo_final2.insert(loc = 0,
                             column='Checkbox',
@@ -763,20 +784,89 @@ if selecionar == 'Divisão de operadores':
             
             # Use io.BytesIO para criar um buffer de bytes
             output4 = io.BytesIO()
-            st.markdown(" Download ")
+
             # Salve o DataFrame no buffer no formato XLSX
             with pd.ExcelWriter(output4, engine='xlsxwriter') as writer:
                 arquivo_final2.to_excel(writer,
-                                            sheet_name='abaixo_de_100k.xlsx',
+                                            sheet_name='Divisão_de_operadores.xlsx',
                                               index=False)
             
             # Crie um link para download
             output4.seek(0)
             st.download_button(
-                label="Clique para fazer o download",
+                label="Exportar dados",
                 data=output4,
                 file_name='Dvisão de contas por operador.xlsx',
                 key='download_button'
             )
+        st.markdown("<br>",unsafe_allow_html=True)
+        st.markdown("<br>",unsafe_allow_html=True)
 
-    
+        col1,col2 = st.columns(2)
+
+        class Contas_Operadas:
+            def __init__(self, numero_da_conta, nome_do_cliente, operador_da_conta, horario_da_operação):
+                self.numero_da_conta = numero_da_conta
+                self.nome_do_cliente = nome_do_cliente
+                self.operador_da_conta = operador_da_conta
+                self.horario_da_operação = horario_da_operação
+
+        def processar_registro_de_conta_e_operador_resposavel(numero_da_conta,operador_da_conta):
+            nome_do_cliente = arquivo_final2.loc[arquivo_final2['CONTA'] == numero_da_conta,'Nome'].iloc[0]
+            horario_da_operação = datetime.datetime.now().strftime('%d-%m-%Y_%H')
+            conta_operada = Contas_Operadas(numero_da_conta,nome_do_cliente,operador_da_conta,horario_da_operação)
+            excel_file = 'contas_operadas.xlsx'
+            try:
+                df_existing = pd.read_excel(excel_file)
+                df_new = pd.DataFrame([conta_operada.__dict__])
+                df_combined = pd.concat([df_existing,df_new],ignore_index=True)
+            except FileNotFoundError:
+                ''
+
+            df_combined.to_excel(excel_file,index=False)
+
+            if botao_de_registro:
+                st.success(f'Operador e conta registrada')
+
+
+        possiveis_operadores_para_registro = ['Breno','Edu','Leo','Bruno']        
+        with col1:numero_da_conta = st.selectbox('Numero da Conta',options=arquivo_final2['CONTA'].unique())
+        with col1:operador_da_conta = st.selectbox('Selecione o operador responsavel',possiveis_operadores_para_registro),
+        botao_de_registro = st.button('registrar Conta Operada',type='primary')
+
+        st.markdown("<br>",unsafe_allow_html=True)
+        if botao_de_registro and numero_da_conta and operador_da_conta:
+            processar_registro_de_conta_e_operador_resposavel(numero_da_conta,operador_da_conta)
+
+
+        contas_operadas = pd.read_excel('contas_operadas.xlsx')
+        contas_operadas = contas_operadas.sort_index(ascending = False)
+        contas_operadas['horario_da_operação'] = pd.to_datetime(contas_operadas['horario_da_operação'],format='%d-%m-%Y_%H',errors='coerce')
+
+        contas_operadas_today = contas_operadas.loc[contas_operadas['horario_da_operação'].dt.date == datetime.datetime.now().date()]
+        contas_operadas_today = contas_operadas_today.sort_values(by='horario_da_operação', ascending=False)
+        print(contas_operadas.columns)
+        st.dataframe(contas_operadas_today)
+
+        if arquivo_final2 is not None:
+            
+            
+            # Use io.BytesIO para criar um buffer de bytes
+            output12 = io.BytesIO()
+
+            # Salve o DataFrame no buffer no formato XLSX
+            with pd.ExcelWriter(output12, engine='xlsxwriter') as writer:
+                contas_operadas.to_excel(writer,
+                                            sheet_name='Contas_operadas.xlsx',
+                                              index=False)
+            
+            # Crie um link para download
+            output12.seek(0)
+            st.download_button(
+                label="Exportar dados",
+                data=output12,
+                file_name='Contas_operadas.xlsx',
+                key='download_button_contas_operadas',
+            )                  
+
+
