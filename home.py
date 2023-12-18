@@ -444,7 +444,19 @@ if selecionar == 'Carteiras':
         #---------------------------------------------------
         #---------------------- Ajustando graficos e tabelas
         print(novo_arq.columns)
-        novo_arq = novo_arq[['PRODUTO', 'VALOR LÍQUIDO', 'QUANTIDADE']]
+        novo_arq = novo_arq[['PRODUTO','VALOR LÍQUIDO', 'QUANTIDADE']]
+        novo_arq = novo_arq.rename(columns={
+            'PRODUTO':'Ativo', 
+            'QUANTIDADE':'Quantidade',
+            'VALOR LÍQUIDO':'Valor em R$'
+        })
+        arquivo_basket = arquivo_basket.rename(columns={
+            'Valor Distribuido':'Valor em R$',
+            'Quantidade Ideal':'Quantidade'
+        })
+
+        arquivo_basket['Valor em R$'] = arquivo_basket['Valor em R$'].apply(lambda x: round (x, 2))
+        arquivo_basket['Quantidade'] = arquivo_basket['Quantidade'].astype(str).str[:-14]
 
          
 
