@@ -816,6 +816,7 @@ if selecionar == 'Divisão de operadores':
             horario_da_operação = datetime.datetime.now().strftime('%d-%m-%Y_%H')
             conta_operada = Contas_Operadas(numero_da_conta,nome_do_cliente,operador_da_conta,horario_da_operação)
             excel_file = 'contas_operadas.xlsx'
+            df_combined = pd.DataFrame()
             try:
                 df_existing = pd.read_excel(excel_file)
                 df_new = pd.DataFrame([conta_operada.__dict__])
