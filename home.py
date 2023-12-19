@@ -24,6 +24,7 @@ selecionar = st.sidebar.radio('Selecione uma opção', paginas)
 
 #---------------------------------- 
 # Variaveis globais
+@st.cache_data
 def le_excel(x):
     df = pd.read_excel(x)
     return df
@@ -844,7 +845,7 @@ if selecionar == 'Divisão de operadores':
 
         possiveis_operadores_para_registro = ['Breno','Edu','Leo','Bruno']        
         with col1:numero_da_conta = st.text_input('Numero da Conta')
-        with col1:operador_da_conta = st.text_input('Quem operou')
+        with col1:operador_da_conta = st.selectbox('Quem operou',possiveis_operadores_para_registro),
         botao_de_registro = st.button('registrar Conta Operada',type='primary')
 
         st.markdown("<br>",unsafe_allow_html=True)
