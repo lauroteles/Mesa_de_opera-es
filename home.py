@@ -16,6 +16,8 @@ import xlsxwriter as xlsxwriter
 import datetime
 import time
 
+t0 = time.perf_counter()
+
 st.set_page_config(layout='wide')
 
 paginas = 'Carteiras','Produtos','Home','Divisão de operadores'
@@ -36,6 +38,7 @@ saldo_original = le_excel('Saldo.xlsx')
 posicao_original = le_excel('Posição.xlsx')
 produtos_original = le_excel('Produtos.xlsx')
 cura_original = le_excel('Curva_comdinheiro.xlsx')
+curva_de_inflacao = le_excel('Curva_inflação.xlsx')
 
 pl = pl_original.copy()
 controle = controle_original.copy()
@@ -43,6 +46,7 @@ saldo = saldo_original.copy()
 arquivo1 = posicao_original.copy()
 produtos = produtos_original.copy()
 curva_base = cura_original.copy()
+curva_inflacao_copia = curva_de_inflacao.copy()
 
 #---------------------------------- 
 
@@ -319,7 +323,7 @@ if selecionar == 'Carteiras':
         st.markdown("<br>",unsafe_allow_html=True)
         #mostrarvxrf = st.toggle('Mostrar proporção Renda Fixa x Renda Variável')
 
-
+        
         if mostrar_rv and mostrar_rf:
             novo_arq = novo_arq
             moderada_graf = moderada_graf
@@ -445,19 +449,7 @@ if selecionar == 'Carteiras':
         #---------------------------------------------------
         #---------------------- Ajustando graficos e tabelas
         print(novo_arq.columns)
-        novo_arq = novo_arq[['PRODUTO','VALOR LÍQUIDO', 'QUANTIDADE']]
-        novo_arq = novo_arq.rename(columns={
-            'PRODUTO':'Ativo', 
-            'QUANTIDADE':'Quantidade',
-            'VALOR LÍQUIDO':'Valor em R$'
-        })
-        arquivo_basket = arquivo_basket.rename(columns={
-            'Valor Distribuido':'Valor em R$',
-            'Quantidade Ideal':'Quantidade'
-        })
-
-        arquivo_basket['Valor em R$'] = arquivo_basket['Valor em R$'].apply(lambda x: round (x, 2))
-        arquivo_basket['Quantidade'] = arquivo_basket['Quantidade'].astype(str).str[:-14]
+        novo_arq = novo_arq[['PRODUTO', 'VALOR LÍQUIDO', 'QUANTIDADE']]
 
          
 
@@ -499,7 +491,7 @@ if selecionar == 'Carteiras':
 #---------------------------------- ---------------------------------- ---------------------------------- ---------------------------------- 
 
 if selecionar == 'Produtos':
-    st.balloons()
+   
     produtos = pd.read_excel('Produtos.xlsx')
     produtos = produtos[[
        'PRODUTO', 'PRAZO/VENCIMENTO', 'TAXA','TAXA EQ. CDB']]
@@ -511,41 +503,116 @@ if selecionar == 'Produtos':
     #----------------------------------
     # Seleção para filtragem de produtos
 
-    radio = ['CDB','LCA','LCI','LC']
+    bancos_que_podem_ser_utilizados = [
+'Banco ABC',
+'Banco Agibak',
+'Banco Alfa',
+'Banco BBC S.A',
+'Banco BMG',
+'Banco Bocom',
+'Banco Bradesco',
+'Banco BS2',
+'Banco BTG Pactual',
+'Banco C6 Consignado',
+'Banco da China',
+'Banco Daycoval',
+'Banco de Brasilia',
+'Banco Digimais',
+'Banco do Brasil',
+'Banco Factor',
+'Banco Fibra',
+'Banco Fidis',
+'Banco Haitong',
+'Banco ICBC',
+'Banco Industrial',
+'Banco Inter',
+'Banco Itau',
+'Banco Master',
+'Banco Mercantil',
+'Banco NBC',
+'Banco Original',
+'Banco Ourinvest',
+'Banco Paulista',
+'Banco Pine',
+'Banco Randon',
+'Banco Rendimento',
+'Banco Rodobens',
+'Banco Safra',
+'Banco Santander',
+'Banco Semear',
+'Banco Sicoob',
+'Banco Topazio',
+'Banco Triangulo',
+'Banco Volkswagen',
+'Banco Votorantim',
+'Banco XCMG',
+'Banco Br Partners',
+'Caixa econômica',
+'Banco Caruana',
+'Banco Citibank',
+'Banco CNH Capital',
+'Banco Omni CFI',
+'Banco Paraná Banco',
+'Banco RaboBank',
+'Banco Sicred',
+'Banco Via Certa']
+
+
+
+    radio = ['CDB','LCA','LCI','LC','Inflação','Inflação Implícita']
     lc =st.sidebar.radio('selecione o tipo de produto',radio)
-    pre_pos =st.radio('',['PRÉ','PÓS'])
+    
 
     if lc =='CDB':
-        produtos = produtos[produtos['PRODUTO'].str.slice(0,3) == 'CDB']
+        pre_pos =st.radio('',['PRÉ','PÓS'])
+        produtos = produtos[(produtos['PRODUTO'].str.slice(0,3) == 'CDB')&(produtos['TAXA'].str.slice(0,4) != 'IPCA')&(produtos['TAXA'].str.slice(0,3) != 'CDI')]
         if pre_pos == 'PRÉ':
             produtos = produtos[produtos['PRODUTO'].str.slice(0,9) == 'CDB - PRÉ']
         elif pre_pos == 'PÓS':
            produtos=produtos[produtos['PRODUTO'].str.slice(0,9) == 'CDB - PÓS']  
 
     elif lc == 'LCI':
-        produtos = produtos[produtos['PRODUTO'].str.slice(0,3) =='LCI']
+        pre_pos =st.radio('',['PRÉ','PÓS'])
+        produtos = produtos[(produtos['PRODUTO'].str.slice(0,3) == 'LCI')&(produtos['TAXA'].str.slice(0,4) != 'IPCA')&(produtos['TAXA'].str.slice(0,3) != 'CDI')]
         if pre_pos == 'PRÉ':
             produtos = produtos[produtos['PRODUTO'].str.slice(0,9) == 'LCI - PRÉ']
         elif pre_pos == 'PÓS':
            produtos=produtos[produtos['PRODUTO'].str.slice(0,9) == 'LCI - PÓS']  
     
     elif lc == 'LC':
-        produtos = produtos[produtos['PRODUTO'].str.slice(0,2) =='LC ']
+        pre_pos =st.radio('',['PRÉ','PÓS'])
+        produtos = produtos[(produtos['PRODUTO'].str.slice(0,2) == 'LC')&(produtos['TAXA'].str.slice(0,4) != 'IPCA')&(produtos['TAXA'].str.slice(0,3) != 'CDI')]
         if pre_pos == 'PRÉ':
             produtos = produtos[produtos['PRODUTO'].str.slice(0,9) == 'LC - PRÉ']
         elif pre_pos == 'PÓS':
            produtos=produtos[produtos['PRODUTO'].str.slice(0,9) == 'LC - PÓS']          
     
     elif lc == 'LCA':
-        produtos = produtos[produtos['PRODUTO'].str.slice(0,3) =='LCA']
+        pre_pos =st.radio('',['PRÉ','PÓS'])
+        produtos = produtos[(produtos['PRODUTO'].str.slice(0,3) == 'LCA')&(produtos['TAXA'].str.slice(0,4) != 'IPCA')&(produtos['TAXA'].str.slice(0,3) != 'CDI')]
         if pre_pos == 'PRÉ':
             produtos = produtos[produtos['PRODUTO'].str.slice(0,9) == 'LCA - PRÉ']
         elif pre_pos == 'PÓS':
            produtos=produtos[produtos['PRODUTO'].str.slice(0,9) == 'LCA - PÓS']
 
-    produtos['PRE_POS'] = pre_pos
-    produtos['PRODUTO'] = pd.Categorical(produtos['PRODUTO'], categories=produtos['PRODUTO'].unique(),ordered=True)
-    produtos['PRE_POS'] = pd.Categorical(produtos['PRE_POS'],categories=['PRÉ','PÓS'],ordered=True)
+
+    elif lc =='Inflação':
+        produtos = produtos[produtos['PRODUTO'].str.slice(17,23) =='ÍNDICE']
+        if lc=='Inflação':
+            cdi_ipca = st.radio('',['CDI','IPCA'])
+            if cdi_ipca == 'CDI':
+                produtos=produtos[produtos['TAXA'].str.slice(0,3) == 'CDI']
+            else:
+                produtos=produtos[produtos['TAXA'].str.slice(0,4) == 'IPCA']
+
+    elif lc == 'Infração Implícita':
+        ''
+          
+
+    if lc in ['CDB','LCA' ,'LCI','LC']:
+        produtos['PRE_POS'] = pre_pos
+        produtos['PRODUTO'] = pd.Categorical(produtos['PRODUTO'], categories=produtos['PRODUTO'].unique(),ordered=True)
+        produtos['PRE_POS'] = pd.Categorical(produtos['PRE_POS'],categories=['PRÉ','PÓS'],ordered=True)
 
     #----------------------------------
     # Retirando letras
@@ -554,18 +621,33 @@ if selecionar == 'Produtos':
     produtos['TAXA EQ. CDB'] = produtos['TAXA EQ. CDB'].astype(str).str.extract('([\d,]+)')
     produtos['TAXA EQ. CDB'] = produtos['TAXA EQ. CDB'].str.replace(',','.').astype(float)
 
+    if lc == 'Inflação' and cdi_ipca == 'CDI':
+        produtos['TAXA']=produtos['TAXA'].str.slice(4,9)
+        produtos['TAXA'] = produtos['TAXA'].str.replace(',','.')
+
+    elif lc in 'Inflação' and cdi_ipca in 'IPCA':
+        produtos['TAXA'] =produtos['TAXA'].str.slice(5,10)
+        produtos['TAXA'] = produtos['TAXA'].str.replace(',','.')
 
     produtos['PRAZO/VENCIMENTO'] = produtos['PRAZO/VENCIMENTO'].sort_values(ascending=True)
     produtos['TAXA EQ. CDB'] = produtos['TAXA EQ. CDB'].sort_values(ascending=True)
-    #produtos = produtos.loc[produtos['PRAZO/VENCIMENTO']<1080]
+
     produtos['PRODUTO'] =produtos['PRODUTO'].str[:-13]
     produtos['PRODUTO'] =produtos['PRODUTO'].str[16:]
-
- #   produtos['prazo_em_anos'] = pd.to_datetime(produtos['PRAZO/VENCIMENTO'], unit='D').dt.to_period('M')
+    if lc in 'Inflação':
+        produtos['PRODUTO'] =produtos['PRODUTO'].str[7:]
+    produtos = produtos[produtos['PRODUTO'].isin(bancos_que_podem_ser_utilizados)]    
 
     produtos['Vencimento'] = datetime.datetime.now() + pd.to_timedelta(produtos['PRAZO/VENCIMENTO'],unit='D')
     produtos['Vencimento'] = produtos['Vencimento'].dt.strftime('%Y-%m-%d')
-                                                                
+    curva_inflacao_copia = curva_inflacao_copia.iloc[:15,:]
+    curva_inflacao_copia['Vertices'] = pd.to_numeric(curva_inflacao_copia['Vertices'],errors='coerce')
+    curva_inflacao_copia['ETTJ'] = pd.to_numeric(curva_inflacao_copia['Vertices'],errors='coerce')
+    
+
+    print(curva_inflacao_copia.info())
+    curva_inflacao_copia['Vencimento'] = datetime.datetime.now() + pd.to_timedelta(curva_inflacao_copia['Vertices'],unit='D')
+    curva_inflacao_copia['Vencimento'] = curva_inflacao_copia['Vencimento'].dt.strftime('%Y-%m-%d')                                                               
     #----------------------------------
     #Calculando a curva 
 
@@ -575,7 +657,14 @@ if selecionar == 'Produtos':
                         mode='lines',
                         name='PREF',
                         line=dict(color='orange')
-                        ))     
+                        ))
+    curva_do_ipca=go.Figure()
+    curva_do_ipca.add_traces(go.Scatter(x=curva_inflacao_copia['Vencimento'],
+                        y=curva_inflacao_copia['ETTJ IPCA'],
+                        mode='lines',
+                        name='PREF',
+                        line=dict(color='#DC143C')
+                        ))      
 
 
     #----------------------------------
@@ -587,7 +676,7 @@ if selecionar == 'Produtos':
 
  
     fig = go.Figure()
-    if pre_pos == 'PRÉ':    
+    if  lc in ['CDB','LCA' ,'LCI','LC'] and  pre_pos == 'PRÉ':    
         fig.add_trace(
             go.Scatter(
                 x=produtos['Vencimento'],
@@ -603,7 +692,7 @@ if selecionar == 'Produtos':
             )
         )
 
-    else:
+    elif lc in ['CDB','LCA' ,'LCI','LC'] and pre_pos  ==' PÓS':
         fig.add_trace(
             go.Scatter(
                 x=produtos['PRODUTO'],
@@ -618,6 +707,39 @@ if selecionar == 'Produtos':
                
         )
     )
+    elif lc  == 'Inflação':
+        fig_inflacao = go.Figure()
+        fig_inflacao.add_trace(
+            go.Scatter(
+                x=produtos['Vencimento'],
+                y=produtos['TAXA'],
+                mode='markers',
+                marker=dict(
+                size = 8,
+                color = 'grey'     
+                ),
+               text=produtos.apply(
+                    lambda row: f'O praze de vencimento e em:  {row["Vencimento"]}  dias   e a Taxa do produto é:  {row["TAXA"]}%  e o Banco emissor:  {row["PRODUTO"]}',axis=1),
+               
+        )
+    )
+    
+    figura_inflacao_implicita = go.Figure()
+    figura_inflacao_implicita.add_trace(
+        go.Line(
+            x=curva_inflacao_copia['Vertices'],
+            y=curva_inflacao_copia['Inflação Implícita'],
+            marker=dict(
+            size = 8,
+            color = 'red'     
+            ),
+            
+    )
+)
+    figura_inflacao_implicita.update_yaxes(range=[3,6])
+    figura_inflacao_implicita.update_xaxes(range=[0,2700])  
+
+
     fig.update_layout(
         showlegend= False,
         title = 'Produtos ofertadors',
@@ -633,23 +755,49 @@ if selecionar == 'Produtos':
         )
         ]
     )
-    if pre_pos =='PRÉ':
+    if lc in ['CDB','LCA' ,'LCI','LC']  and pre_pos =='PRÉ':
         fig.update_yaxes(range=[8.5,13])
 
-    else:
+    elif lc in ['CDB','LCA' ,'LCI','LC'] and pre_pos =='PÓS' :
         fig.update_yaxes(range=[95,125])
+
+    if lc in 'Inflação' and cdi_ipca in 'CDI':
+        fig_inflacao.update_yaxes(range=[0,1.5])
+
+    elif lc in'Inflação' and cdi_ipca in 'IPCA' :
+        fig_inflacao.update_yaxes(range=[3,7])
+   
    
 
     fig.update_xaxes(showticklabels = False)
 
     fig3 = go.Figure(data=fig.data+fig2.data)
 
-    if pre_pos == 'PRÉ':
+
+
+    if lc in ['CDB','LCA' ,'LCI','LC'] and  pre_pos == 'PRÉ':
         st.plotly_chart(fig3,use_container_width=True)
-    else:
+        
+    elif lc in ['CDB','LCA' ,'LCI','LC'] and pre_pos =='PÓS':
         st.plotly_chart(fig,use_container_width=True)
 
-    st.dataframe(produtos)               
+    elif lc  in 'Inflação' and cdi_ipca in 'CDI':
+        st.plotly_chart(fig_inflacao,use_container_width=True)
+
+    elif lc  in 'Inflação' and cdi_ipca in 'IPCA':
+        inflação_e_produtos =go.Figure(data=fig_inflacao.data+curva_do_ipca.data)
+        inflação_e_produtos.update_yaxes(range=[3,7])
+        st.plotly_chart(inflação_e_produtos)
+
+    elif lc in 'Inflação Implícita':    
+        st.plotly_chart(figura_inflacao_implicita)  
+
+       
+
+    produtos = produtos.drop(columns=['PRAZO/VENCIMENTO','TAXA EQ. CDB'])
+    st.dataframe(produtos)
+           
+
 
 #----------------------------------  ---------------------------------- ---------------------------------- ---------------------------------- 
 # Pagina de divisão de contas por operador
@@ -829,11 +977,10 @@ if selecionar == 'Divisão de operadores':
             horario_da_operação = datetime.datetime.now().strftime('%d-%m-%Y_%H')
             conta_operada = Contas_Operadas(numero_da_conta,nome_do_cliente,operador_da_conta,horario_da_operação)
             excel_file = 'contas_operadas.xlsx'
-            df_combined = pd.DataFrame()
             try:
                 df_existing = pd.read_excel(excel_file)
-                df_new = pd.DataFrame([conta_operada.__dict__])
-                df_combined = pd.concat([df_existing,df_new],ignore_index=True).copy()
+                df_new = pd.DataFrame([conta_operada.__dict__]).copy()
+                df_combined = pd.concat([df_existing,df_new],ignore_index=True)
             except FileNotFoundError:
                 ''
 
@@ -882,5 +1029,9 @@ if selecionar == 'Divisão de operadores':
                 file_name='Contas_operadas.xlsx',
                 key='download_button_contas_operadas',
             )                  
+
+t1 = time.perf_counter()
+
+
 
 
