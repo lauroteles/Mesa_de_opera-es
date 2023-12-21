@@ -20,13 +20,13 @@ t0 = time.perf_counter()
 
 st.set_page_config(layout='wide')
 
-paginas = 'Carteiras','Produtos','Home','Divisão de operadores'
+paginas = 'Home','Carteiras','Produtos','Divisão de operadores','Analitico'
 selecionar = st.sidebar.radio('Selecione uma opção', paginas)
 
 
 #---------------------------------- 
 # Variaveis globais
-@st.cache_data(ttl="2m")
+@st.cache_data(ttl="1h")
 def le_excel(x):
     df = pd.read_excel(x)
     return df
@@ -75,7 +75,7 @@ equities = {'ARZZ3': 4.5,
             'PRIO3':8,
             'PSSA3':5.50,
             'SBSP3':4.50,
-            'SLCE':6.50,
+            'SLCE3':6.50,
             'VALE3':10,
             'Caixa':10
             }
@@ -230,8 +230,8 @@ if selecionar == 'Carteiras':
         elif valor_coluna == 'DIV':
             moderada_graf = dividendos_dataframe   
         else:
-           st.success('Essa carteira e exeção')
-    
+            st.success('Essa carteira e exeção')
+
         
         st.text('Valor total da carteira')
         st.title(f'{valor_liquido:,.2f}')
@@ -244,6 +244,21 @@ if selecionar == 'Carteiras':
 
 
         #-----------------acertando valores em ordem e retirando colunas
+        lista_acoes_sem_caixa = ['ARZZ3',
+            'ASAI3',
+            'CSAN3',
+            'CSED3',
+            'EGIE3',
+            'EQTL3',
+            'EZTC3',
+            'HYPE3',
+            'KEPL3',
+            'MULT3',
+            'PRIO3',
+            'PSSA3',
+            'SBSP3',
+            'SLCE3',
+            'VALE3']
 
         distribuicao_alvo = moderada_graf[['Ativo','Valor Distribuido']].reset_index()
         distribuicao_alvo['Ativo']=distribuicao_alvo['Ativo'].str.upper()
@@ -256,8 +271,20 @@ if selecionar == 'Carteiras':
         arquivo_basket['Quantidade Ideal'] = arquivo_basket['Basket']*arquivo_basket['Valor Distribuido']
         arquivo_basket = arquivo_basket[['Ativo', 'Valor Distribuido','Quantidade Ideal']]
 
+        precos_de_mercado = {}
+        for ativo in lista_acoes_sem_caixa:
+            ticker = yf.Ticker(ativo +'.SA')
+            preco_atual = ticker.history(period='2m')['Close'].iloc[-1]
+        
+            precos_de_mercado[ativo] = preco_atual
 
-       #-------------------filtrando RV x RF
+        arquivo_basket['Preco_de_mercado'] = ''
+        arquivo_basket['Preco_de_mercado'] = arquivo_basket['Ativo'].map(precos_de_mercado)
+        arquivo_basket['Quantidade Ideal' ]= arquivo_basket['Valor Distribuido']/arquivo_basket['Preco_de_mercado'] 
+
+
+
+        #-------------------filtrando RV x RF
 
         lista_acoes = ['ARZZ3','ARZZ',
             'ASAI3',
@@ -275,7 +302,7 @@ if selecionar == 'Carteiras':
             'SLCE3',
             'VALE3',
             'Caixa']
-    
+
         filtro_rv = novo_arq[novo_arq['PRODUTO'].isin(lista_acoes)].reset_index()
         filtro_rf = novo_arq[~novo_arq['PRODUTO'].isin(lista_acoes)].reset_index()
 
@@ -299,7 +326,7 @@ if selecionar == 'Carteiras':
         # renda_v_vs_rf.at[1,'PRODUTO'] = 'Renda Fixa'
         # renda_v_vs_rf = renda_v_vs_rf[[
         #     'PRODUTO','VALOR LÍQUIDO']]
-          
+            
 
 
         # ideal_proporção_rf = moderada_graf[moderada_graf['Ativo'].isin(lista_acoes)].sum().reset_index()
@@ -349,8 +376,8 @@ if selecionar == 'Carteiras':
         #     arquivo_basket = ideal_porporção
 
         
- 
-  
+
+
 
         #---------------------------
         #        Graficos
@@ -369,7 +396,7 @@ if selecionar == 'Carteiras':
         figas=px.pie(moderada_graf,values='Proporção',labels='Ativo')
 
         graf_moderada = go.Figure(data=[go.Pie(labels=moderada_graf['Ativo'], values=moderada_graf['Proporção'],
-                                                         hole=0.4,
+                                                            hole=0.4,
                                         textinfo='label+percent',
                                         insidetextorientation='radial',
                                         textposition='outside'
@@ -382,16 +409,16 @@ if selecionar == 'Carteiras':
         nov_controle = nov_controle.rename(columns={
             'Unnamed: 1':'Nome do cliente',
             'Unnamed: 2':'Conta',
-              'Unnamed: 3':'Escritorio',
+                'Unnamed: 3':'Escritorio',
                 'Unnamed: 4':'Estado',
-                  'Unnamed: 5':'Assessor',
-       'Backoffice/ Mesa':'Status',
-         'Mesa de Operação.1':'Situação',
-         'Backoffice.1':'Exeção',
-           'Unnamed: 12':'Perfil',
-       'Mesa de Operação.2':'Lembretes mesa',
-         'Gestão/ Head comercial':'Observações',
-           'Backoffice ':'Observações'
+                    'Unnamed: 5':'Assessor',
+        'Backoffice/ Mesa':'Status',
+            'Mesa de Operação.1':'Situação',
+            'Backoffice.1':'Exeção',
+            'Unnamed: 12':'Perfil',
+        'Mesa de Operação.2':'Lembretes mesa',
+            'Gestão/ Head comercial':'Observações',
+            'Backoffice ':'Observações'
         })
         nov_controle = nov_controle.unstack()
         
@@ -409,11 +436,11 @@ if selecionar == 'Carteiras':
         basket['Conta'] = input_text
         basket['Validade'] = 'DIA'
         basket['Basket_BTG'] =basket['Basket_BTG'].astype(int)
-       
+        
         for ativo in basket['Ativo']:
             ticker = yf.Ticker(ativo +'.SA')
             preco_atual = ticker.history(period='5m')['Close'].iloc[-1]
-       
+        
             precos_mercado[ativo] = preco_atual
         basket['Preço'] = ''
         basket['Preço'] = basket['Ativo'].map(precos_mercado)
@@ -435,7 +462,7 @@ if selecionar == 'Carteiras':
             with pd.ExcelWriter(output4, engine='xlsxwriter') as writer:
                 basket.to_excel(writer,
                                             sheet_name='Basket',
-                                              index=False)
+                                                index=False)
             
             # Crie um link para download
             output4.seek(0)
@@ -448,10 +475,22 @@ if selecionar == 'Carteiras':
 
         #---------------------------------------------------
         #---------------------- Ajustando graficos e tabelas
-        print(novo_arq.columns)
+        
         novo_arq = novo_arq[['PRODUTO', 'VALOR LÍQUIDO', 'QUANTIDADE']]
-
-         
+        novo_arq.rename(columns={
+            'Produto':'Ativo',
+            'VALOR LÍQUIDO':'Valor em R$',
+            'QUANTIDADE':'Quantidade do ativo'
+        },inplace=True)
+        arquivo_basket.rename(columns={
+            'Valor Distribuido':'Valor em R$',
+            'Quantidade Ideal':'Quantidade do ativo',
+            'Preco_de_mercado':'Cotação atual'
+        },inplace=True)
+        print(arquivo_basket.info())
+        arquivo_basket['Quantidade do ativo'] = arquivo_basket['Quantidade do ativo'].fillna(0)
+        arquivo_basket['Quantidade do ativo'] = arquivo_basket['Quantidade do ativo'].round(0).astype(int)
+            
 
         #----------------------------------------------
         #---------------------- Streamlit visualization
@@ -491,7 +530,7 @@ if selecionar == 'Carteiras':
 #---------------------------------- ---------------------------------- ---------------------------------- ---------------------------------- 
 
 if selecionar == 'Produtos':
-   
+
     produtos = pd.read_excel('Produtos.xlsx')
     produtos = produtos[[
        'PRODUTO', 'PRAZO/VENCIMENTO', 'TAXA','TAXA EQ. CDB']]
@@ -1029,9 +1068,157 @@ if selecionar == 'Divisão de operadores':
                 file_name='Contas_operadas.xlsx',
                 key='download_button_contas_operadas',
             )                  
+#----------------------------------  ---------------------------------- ---------------------------------- ---------------------------------- 
+# Pagina de Analise
+#---------------------------------- ---------------------------------- ---------------------------------- ---------------------------------- 
+if selecionar == 'Analitico':
+
+    arquivo2 = arquivo1.groupby(['CONTA','PRODUTO','ATIVO'])[['VALOR BRUTO','VALOR LÍQUIDO','QUANTIDADE']].sum().reset_index('CONTA')
+
+
+    novo_arq = arquivo2.groupby(['PRODUTO','CONTA'])[['VALOR LÍQUIDO','QUANTIDADE']].sum().reset_index()
+    controle = controle.iloc[:,[2,6,12]]
+
+
+    controle['Unnamed: 2'] = controle['Unnamed: 2'].astype(str)
+    controle['Unnamed: 2'] = list(map(lambda x: '00' + x,controle['Unnamed: 2']))
+        
+    juncao_arquivo_de_posicao_e_controle = pd.merge(controle,novo_arq, left_on='Unnamed: 2',right_on='CONTA', how= 'outer' )
+
+    soma_dos_ativos_por_carteira = juncao_arquivo_de_posicao_e_controle.groupby(['Unnamed: 12','PRODUTO'])['VALOR LÍQUIDO'].sum().reset_index()
+
+    def criando_df_para_grafico(perfil_do_cliente):
+      df = soma_dos_ativos_por_carteira[soma_dos_ativos_por_carteira['Unnamed: 12'] == perfil_do_cliente]
+      return df
+    
+    carteira_inc = criando_df_para_grafico('INC')
+    carteira_con = criando_df_para_grafico('CON')
+    carteira_mod = criando_df_para_grafico('MOD')
+    carteira_arr = criando_df_para_grafico('ARR')
+    carteira_equity = criando_df_para_grafico('EQT')
+    carteira_FII = criando_df_para_grafico('FII')
+    carteira_small = criando_df_para_grafico('SMLL')
+    carteira_dividendos = criando_df_para_grafico('DIV')
+    carteira_MOD_PREV_MOD = criando_df_para_grafico('MOD/ PREV MOD')
+    carteira_INC_PREV_MOD = criando_df_para_grafico('INC/ PREV MOD')
+
+    lista_para_incluir_coluna_de_porcentagem = [
+        carteira_inc,
+        carteira_con,
+        carteira_mod,
+        carteira_arr,
+        carteira_equity,
+        carteira_FII,
+        carteira_small,
+        carteira_dividendos,
+        carteira_MOD_PREV_MOD,
+        carteira_INC_PREV_MOD]
+
+    carteira_inc['Porcentagem'] = (carteira_inc['VALOR LÍQUIDO']/carteira_inc['VALOR LÍQUIDO'].sum())*100
+
+    for dfs in lista_para_incluir_coluna_de_porcentagem:
+        dfs['Porcentagem'] = (dfs['VALOR LÍQUIDO']/dfs['VALOR LÍQUIDO'].sum())*100
+    for dfs in lista_para_incluir_coluna_de_porcentagem:
+        dfs.drop(dfs[dfs['Porcentagem']<1].index, inplace=True)    
+
+    padronizacao_dos_graficos = dict(hole=0.4,
+                                    textinfo='label+percent',
+                                    insidetextorientation='radial',
+                                    textposition='inside')
+    night_colors = ['rgb(56, 75, 126)', 'rgb(18, 36, 37)', 'rgb(34, 53, 101)',
+                'rgb(36, 55, 57)', 'rgb(6, 4, 4)']
+    sunflowers_colors = ['rgb(177, 127, 38)', 'rgb(205, 152, 36)', 'rgb(99, 79, 37)',
+                     'rgb(129, 180, 179)', 'rgb(124, 103, 37)']
+    irises_colors = ['rgb(33, 75, 99)', 'rgb(79, 129, 102)', 'rgb(151, 179, 100)',
+                 'rgb(175, 49, 35)', 'rgb(36, 73, 147)']
+    cafe_colors =  ['rgb(146, 123, 21)', 'rgb(177, 180, 34)', 'rgb(206, 206, 40)',
+                'rgb(175, 51, 21)', 'rgb(35, 36, 21)']
+    
+
+
+    def criando_graficos(carteira,padronizacao,titulo):
+
+        figura = go.Figure(data=[go.Pie(
+            labels=carteira['PRODUTO'],
+            values=carteira['VALOR LÍQUIDO'],
+            marker_colors=sunflowers_colors,
+            scalegroup='one'
+
+            
+                        )])
+        figura.update_traces(**padronizacao)
+        figura.update_layout(title_text = titulo,
+                              title_x=0.2,
+                              title_font_size = 23,
+                              uniformtext_minsize=14,
+                              #uniformtext_mode='hide'
+                              )
+
+        return figura
+        
+
+
+    figura_carteira_inc = criando_graficos(carteira_inc,padronizacao_dos_graficos,'Carteira Income')
+    figura_carteira_con = criando_graficos(carteira_con,padronizacao_dos_graficos,'Carteira Conservadora')
+    figura_carteira_mod = criando_graficos(carteira_mod,padronizacao_dos_graficos,'Carteira Moderada')
+    figura_carteira_arr = criando_graficos(carteira_arr,padronizacao_dos_graficos,'Carteira Arrojada')
+    figura_carteira_equity = criando_graficos(carteira_equity,padronizacao_dos_graficos,'Carteira Equity')
+    figura_carteira_FII = criando_graficos(carteira_FII,padronizacao_dos_graficos,'Carteira FII')
+    figura_carteira_small = criando_graficos(carteira_small,padronizacao_dos_graficos,'Carteira Small Caps')
+    figura_carteira_dividendos = criando_graficos(carteira_dividendos,padronizacao_dos_graficos,'Carteira Dividendos')
+    figura_carteira_MOD_PREV_MOD = criando_graficos(carteira_MOD_PREV_MOD,padronizacao_dos_graficos,'Carteira Moderada - Previdencia - Moderada')
+    figura_carteira_INC_PREV_MOD = criando_graficos(carteira_INC_PREV_MOD,padronizacao_dos_graficos,'Carteira Income - Previdencia - Moderada')
+
+    lista_de_variaveis_para_criar_grafico_col1 = [
+        figura_carteira_inc,
+        figura_carteira_con,
+        figura_carteira_mod,]
+
+    lista_de_variaveis_para_criar_grafico_col2 =[figura_carteira_arr,
+        figura_carteira_equity,
+        figura_carteira_FII,]
+    
+    lista_de_variaveis_para_criar_grafico_col3 =[figura_carteira_small,
+        figura_carteira_dividendos,
+        figura_carteira_MOD_PREV_MOD,
+        figura_carteira_INC_PREV_MOD]
+    
+
+    
+
+    col1,col2,col3 = st.columns(3)
+
+    with col1:  
+        for variaveis in lista_de_variaveis_para_criar_grafico_col1:
+            st.plotly_chart(variaveis)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    with col2:  
+        for variaveis in lista_de_variaveis_para_criar_grafico_col2:
+            st.plotly_chart(variaveis)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)    
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    with col3:  
+        for variaveis in lista_de_variaveis_para_criar_grafico_col3:
+            st.plotly_chart(variaveis)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    st.dataframe(carteira_inc)
+    st.dataframe(soma_dos_ativos_por_carteira)
+
+
+
+
+
+
 
 t1 = time.perf_counter()
 
-
-
+print(t1-t0)
 
