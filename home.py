@@ -87,8 +87,8 @@ equities_graf['Proporção'] =equities_graf['Proporção']/100
    
 
 income = {
-    'POS':35,
-    'Inflação':18,
+    'POS':15,
+    'Inflação':38,
     'PRE':44,
     'FundoDI':3
     }
@@ -192,7 +192,7 @@ if selecionar == 'Carteiras':
     controle['Unnamed: 2'] = controle['Unnamed: 2'].astype(str)
     controle['Unnamed: 2'] = list(map(lambda x: '00' + x,controle['Unnamed: 2']))
     try:
-            
+                
         novo_controle = pd.merge(controle,novo_arq, left_on='Unnamed: 2',right_on='CONTA', how= 'outer' )
         nov_controle = controle.loc[controle['Unnamed: 2'] == input_text ]
         
@@ -490,8 +490,11 @@ if selecionar == 'Carteiras':
         print(arquivo_basket.info())
         arquivo_basket['Quantidade do ativo'] = arquivo_basket['Quantidade do ativo'].fillna(0)
         arquivo_basket['Quantidade do ativo'] = arquivo_basket['Quantidade do ativo'].round(0).astype(int)
-            
 
+        if (basket['C/V'] == 'V').any():
+            valor_da_basket = 0.00
+        elif (basket['C/V'] == 'C').any():
+            valor_da_basket = (basket['Quantidade']*basket['Preço']).sum()    
         #----------------------------------------------
         #---------------------- Streamlit visualization
 
@@ -509,7 +512,8 @@ if selecionar == 'Carteiras':
         with col1: st.subheader('Informações do cliente')
         with col1: st.dataframe(nov_controle,use_container_width=True)
         with col1: ''
-        with col1: st.subheader('Basket')        
+        with col1: st.subheader('Basket')
+        with col1:st.warning(f' O valor total dessa basket vai ser de : {valor_da_basket:,.2f}')        
         with col1: st.dataframe(basket,use_container_width=True)
 
         # --------------Coluna 2
@@ -518,10 +522,11 @@ if selecionar == 'Carteiras':
         with col2: st.plotly_chart(graf_moderada,use_container_width=True)
         with col2: st.dataframe(arquivo_basket,use_container_width=True)
 
+
         #3 --------------- ROW
 
     except:
-        st.header('Digite uma conta valida')
+         st.header('Digite uma conta valida')
 
 
 
@@ -1209,9 +1214,6 @@ if selecionar == 'Analitico':
             st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
-    st.dataframe(carteira_inc)
-    st.dataframe(soma_dos_ativos_por_carteira)
-
 
 
 
@@ -1221,4 +1223,10 @@ if selecionar == 'Analitico':
 t1 = time.perf_counter()
 
 print(t1-t0)
+
+
+
+
+
+
 
