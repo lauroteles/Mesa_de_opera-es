@@ -432,6 +432,7 @@ if selecionar == 'Carteiras':
         basket = basket[[
             'Ativo',  'Basket_BTG']]
         basket['C/V'] = np.where(basket['Basket_BTG']<0,'V','C')
+        basket['Basket_BTG'] = basket['Basket_BTG'].fillna(0)
         basket['Basket_BTG'] = np.where(basket['Basket_BTG']<0,basket['Basket_BTG'].astype(int).astype(str).str[1:],basket['Basket_BTG'])
         basket['Conta'] = input_text
         basket['Validade'] = 'DIA'
