@@ -26,12 +26,11 @@ selecionar = st.sidebar.radio('Selecione uma opção', paginas)
 
 #---------------------------------- 
 # Variaveis globais
-@st.cache_data(ttl="2m")
+@st.cache_data(ttl="1d")
+     
 def le_excel(x):
     df = pd.read_excel(x)
     return df
-
-
 pl_original = le_excel('PL Total.xlsx')
 controle_original = le_excel('controle.xlsx')
 saldo_original = le_excel('Saldo.xlsx')
@@ -48,7 +47,24 @@ produtos = produtos_original.copy()
 curva_base = cura_original.copy()
 curva_inflacao_copia = curva_de_inflacao.copy()
 
-#---------------------------------- 
+botao_cache = st.button('Atualizar dados')
+if botao_cache:
+
+    pl_original = le_excel('PL Total.xlsx')
+    controle_original = le_excel('controle.xlsx')
+    saldo_original = le_excel('Saldo.xlsx')
+    posicao_original = le_excel('Posição.xlsx')
+    produtos_original = le_excel('Produtos.xlsx')
+    cura_original = le_excel('Curva_comdinheiro.xlsx')
+    curva_de_inflacao = le_excel('Curva_inflação.xlsx')
+
+    pl = pl_original.copy()
+    controle = controle_original.copy()
+    saldo = saldo_original.copy()
+    arquivo1 = posicao_original.copy()
+    produtos = produtos_original.copy()
+    curva_base = cura_original.copy()
+    curva_inflacao_copia = curva_de_inflacao.copy()
 
 
 
@@ -492,10 +508,19 @@ if selecionar == 'Carteiras':
         arquivo_basket['Quantidade do ativo'] = arquivo_basket['Quantidade do ativo'].fillna(0)
         arquivo_basket['Quantidade do ativo'] = arquivo_basket['Quantidade do ativo'].round(0).astype(int)
 
-        if (basket['C/V'] == 'V').any():
-            valor_da_basket = 0.00
-        elif (basket['C/V'] == 'C').any():
-            valor_da_basket = (basket['Quantidade']*basket['Preço']).sum()    
+
+        somatario_basket = basket.copy()
+        try:
+            if 'V' in somatario_basket['C/V'].values:
+                somatario_basket['Venda'] = somatario_basket['Quantidade']*somatario_basket['Preço']
+        except:
+            pass 
+        try:           
+            if 'C' in somatario_basket['C/V'].values:
+                somatario_basket['Compra'] = somatario_basket['Quantidade']*somatario_basket['Preço']
+        except:
+            pass
+     
         #----------------------------------------------
         #---------------------- Streamlit visualization
 
@@ -505,19 +530,27 @@ if selecionar == 'Carteiras':
 
         # -------------Coluna 1
 
-        with col1: st.subheader('Proporção da carteira')
-        with col1: st.plotly_chart(graf1,use_container_width= True)
-        with col1: st.dataframe(novo_arq,use_container_width=True)
-        with col1: ''
-        with col1: ''
-        with col1: st.subheader('Informações do cliente')
-        with col1: st.dataframe(nov_controle,use_container_width=True)
-        with col1: ''
-        with col1: st.subheader('Basket')
-        with col1:st.warning(f' O valor total dessa basket vai ser de : {valor_da_basket:,.2f}')        
-        with col1: st.dataframe(basket,use_container_width=True)
+        with col1: 
+            st.subheader('Proporção da carteira')
+            st.plotly_chart(graf1,use_container_width= True)
+            st.dataframe(novo_arq,use_container_width=True)
+            with col1: ''
+            with col1: ''
+            st.subheader('Informações do cliente')
+            st.dataframe(nov_controle,use_container_width=True)
+            with col1:''
+            st.subheader('Basket')
+            try:
+                st.warning(f' O saldo gerado pelas vendas vai ser de : {somatario_basket["Venda"].sum():,.2f}')
+            except:
+                pass
+            try:   
+                st.warning(f' O saldo Nescessario para e de : {somatario_basket["Compra"].sum():,.2f}')          
+            except:
+                pass
+            st.dataframe(basket,use_container_width=True)
 
-        # --------------Coluna 2
+            # --------------Coluna 2
 
         with col2: st.subheader('Proporção ideal')
         with col2: st.plotly_chart(graf_moderada,use_container_width=True)
@@ -527,7 +560,7 @@ if selecionar == 'Carteiras':
         #3 --------------- ROW
 
     except:
-         st.header('Digite uma conta valida')
+          st.header('Digite uma conta valida')
 
 
 
@@ -701,7 +734,8 @@ if selecionar == 'Produtos':
                         y=curva_base['Taxa Spot'],
                         mode='lines',
                         name='PREF',
-                        line=dict(color='orange')
+                        line=dict(color='white',width = 6),
+                        
                         ))
     curva_do_ipca=go.Figure()
     curva_do_ipca.add_traces(go.Scatter(x=curva_inflacao_copia['Vencimento'],
@@ -714,12 +748,41 @@ if selecionar == 'Produtos':
 
     #----------------------------------
     #Graficos
+    produtos.sort_values(by='Vencimento',inplace=True)
+    produtos_com_curva = go.Figure()
+    for produto, dados in produtos.groupby('PRODUTO'):
+        produtos_com_curva.add_trace(go.Scatter(
+            x=dados['Vencimento'],
+            y=dados['TAXA EQ. CDB'],
+            mode='lines+markers',
+            name=produto,
+            text=produtos.apply(
+                    lambda row: f'O vencimento e em:  **{row["Vencimento"]}** e a Taxa do produto é:  **{row["TAXA EQ. CDB"]:.2f}%**  e o Banco emissor:  **{row["PRODUTO"]}**',axis=1),
+                
+        ))
+        produtos_com_curva.update_layout(
+        title=dict(text='Evolução PL dos Assessores ao longo do tempo',
+                                                     font=dict(size=20),
+                                                     x=0.1,
+                                                     y=0.9),
+                                                    showlegend=True,
+                                                    
+                                                    height=600,
+                                                    width = 1500,   
+                                                    xaxis=dict(
+        showticklabels=True,  # Ative a exibição de rótulos no eixo x
+        #tickmode='array',    # Modo de exibição de rótulos
+        #tickvals=dados['Vencimento'][::6],  # Ajuste os valores dos rótulos para cada 6 períodos
+        #ticktext=dados['Vencimento'][::6],       
+        ))
+        produtos_com_curva.update_yaxes(range=[9,12.5])      
+
     
     
     #----------------------------------
     #Scatter graph com curva:
+    
 
- 
     fig = go.Figure()
     if  lc in ['CDB','LCA' ,'LCI','LC'] and  pre_pos == 'PRÉ':    
         fig.add_trace(
@@ -737,10 +800,10 @@ if selecionar == 'Produtos':
             )
         )
 
-    elif lc in ['CDB','LCA' ,'LCI','LC'] and pre_pos  ==' PÓS':
+    elif lc in ['CDB','LCA' ,'LCI','LC'] and pre_pos  =='PÓS':
         fig.add_trace(
             go.Scatter(
-                x=produtos['PRODUTO'],
+                x=produtos['Vencimento'],
                 y=produtos['TAXA EQ. CDB'],
                 mode='markers',
                 marker=dict(
@@ -752,6 +815,7 @@ if selecionar == 'Produtos':
                
         )
     )
+    
     elif lc  == 'Inflação':
         fig_inflacao = go.Figure()
         fig_inflacao.add_trace(
@@ -768,7 +832,8 @@ if selecionar == 'Produtos':
                
         )
     )
-    
+
+
     figura_inflacao_implicita = go.Figure()
     figura_inflacao_implicita.add_trace(
         go.Line(
@@ -816,7 +881,7 @@ if selecionar == 'Produtos':
 
     fig.update_xaxes(showticklabels = False)
 
-    fig3 = go.Figure(data=fig.data+fig2.data)
+    fig3 = go.Figure(data=produtos_com_curva.data+fig2.data)
 
 
 
@@ -902,27 +967,27 @@ if selecionar == 'Divisão de operadores':
     # Filtros para adicionar operadores
 
         #Filtro Breno
-        filtro = (arquivo_final['VALOR']<250000) & (arquivo_final['Operador']=='Edu')
+        filtro = (arquivo_final['VALOR']<200000) & (arquivo_final['Operador']=='Edu')
         arquivo_final.loc[filtro,'Operador'] ='Breno'
 
         #Filtro Edu
 
-        filtro2 =  filtro = (arquivo_final['VALOR']>250000) & (arquivo_final['Operador']=='Edu')
+        filtro2 =  filtro = (arquivo_final['VALOR']>200000) & (arquivo_final['Operador']=='Edu')
         arquivo_final.loc[filtro2,'Operador'] = 'Edu'
 
         #filtro Bruno
 
-        filtro4 = (arquivo_final['VALOR']<250000) & (arquivo_final['Operador']=='Léo')
+        filtro4 = (arquivo_final['VALOR']<200000) & (arquivo_final['Operador']=='Léo')
         arquivo_final.loc[filtro4,'Operador'] ='Bruno'
         
         # Filtro léo
-        filtro6  = (arquivo_final['VALOR']>250000) & (arquivo_final['Operador']=='Léo')
+        filtro6  = (arquivo_final['VALOR']>200000) & (arquivo_final['Operador']=='Léo')
         arquivo_final.loc[filtro6,'Operador'] = 'Léo'
 
-        filtro7 = (arquivo_final['VALOR']>250000)&(arquivo_final['Operador'] =='Breno')
+        filtro7 = (arquivo_final['VALOR']>200000)&(arquivo_final['Operador'] =='Breno')
         arquivo_final.loc[filtro7,'Operador'] = 'Edu'
 
-        filtro8 = (arquivo_final['VALOR']>250000)&(arquivo_final['Operador'] =='Bruno')
+        filtro8 = (arquivo_final['VALOR']>200000)&(arquivo_final['Operador'] =='Bruno')
         arquivo_final.loc[filtro8,'Operador'] = 'Léo'
 
         
@@ -1139,8 +1204,46 @@ if selecionar == 'Analitico':
                  'rgb(175, 49, 35)', 'rgb(36, 73, 147)']
     cafe_colors =  ['rgb(146, 123, 21)', 'rgb(177, 180, 34)', 'rgb(206, 206, 40)',
                 'rgb(175, 51, 21)', 'rgb(35, 36, 21)']
+    lista_acoes_em_caixa = ['ARZZ3',
+            'ASAI3',
+            'CSAN3',
+            'CSED3',
+            'EGIE3',
+            'EQTL3',
+            'EZTC3',
+            'HYPE3',
+            'KEPL3',
+            'MULT3',
+            'PRIO3',
+            'PSSA3',
+            'SBSP3',
+            'SLCE3',
+            'VALE3']
     
+    def criando_graficos_rf_rv (df,title,color):
+        df['Renda Variavel'] = df.loc[df['PRODUTO'].isin(lista_acoes_em_caixa),'VALOR LÍQUIDO'].sum()
+        df['Renda Fixa'] = df.loc[~df['PRODUTO'].isin(lista_acoes_em_caixa),'VALOR LÍQUIDO'].sum()
+        df['Total RV RF'] = df['Renda Variavel'] + df['Renda Fixa']
+        labels = ['Renda Variavel', 'Renda Fixa']
+        values = [df['Renda Variavel'].sum(), df['Renda Fixa'].sum()]
+        colors = cafe_colors
+        fig = go.Figure(data=[go.Pie(labels=labels, values=values, marker=dict(colors=color))])
+        fig.update_layout(title_text=title,
+                              title_x=0.2,
+                              title_font_size = 23,
+                              uniformtext_minsize=14,)
+        
+        # Exibe o gráfico no Streamlit
+        st.plotly_chart(fig)
 
+        #df2 = df.melt(id_vars=['PRODUTO'], var_name='VALOR LÍQUIDO', value_name='Valor')
+        return df
+    mostrar_rv_x_rf = st.toggle('Ver Proporção Renda Fixa vs Renda Variável')
+    mostrar_tabelas = st.toggle('Ver tabelas')
+    if mostrar_rv_x_rf:
+        carteira_arr_media_rv_rf = criando_graficos_rf_rv(carteira_arr,'Arrojada',cafe_colors)
+        carteira_mod_media_rv_rf = criando_graficos_rf_rv(carteira_mod,'Moderada',night_colors)
+    
 
     def criando_graficos(carteira,padronizacao,titulo):
 
@@ -1175,6 +1278,11 @@ if selecionar == 'Analitico':
     figura_carteira_MOD_PREV_MOD = criando_graficos(carteira_MOD_PREV_MOD,padronizacao_dos_graficos,'Carteira Moderada - Previdencia - Moderada')
     figura_carteira_INC_PREV_MOD = criando_graficos(carteira_INC_PREV_MOD,padronizacao_dos_graficos,'Carteira Income - Previdencia - Moderada')
 
+    lista_dfs =[carteira_arr,carteira_mod,carteira_con]
+    lista_dfs2 = [carteira_equity,carteira_inc,carteira_dividendos]
+    lista_dfs3 = [carteira_small,carteira_FII,carteira_INC_PREV_MOD,carteira_MOD_PREV_MOD]
+
+
     lista_de_variaveis_para_criar_grafico_col1 = [
         figura_carteira_inc,
         figura_carteira_con,
@@ -1199,20 +1307,42 @@ if selecionar == 'Analitico':
             st.plotly_chart(variaveis)
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+        if mostrar_tabelas:                
+            for cart in lista_dfs:
+                cart['Porcentagem'] = cart['Porcentagem'].map(lambda x: f"{x:.2f}")
+                st.dataframe(cart)  
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     with col2:  
         for variaveis in lista_de_variaveis_para_criar_grafico_col2:
-            st.plotly_chart(variaveis)
+            st.plotly_chart(variaveis)          
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)    
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+        if mostrar_tabelas:   
+            for cart in lista_dfs2:
+                cart['Porcentagem'] = cart['Porcentagem'].map(lambda x: f"{x:.2f}")
+                st.dataframe(cart)      
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)    
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     with col3:  
         for variaveis in lista_de_variaveis_para_criar_grafico_col3:
             st.plotly_chart(variaveis)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
+        if mostrar_tabelas:    
+            for cart in lista_dfs3:
+                cart['Porcentagem'] = cart['Porcentagem'].map(lambda x: f"{x:.2f}")
+                st.dataframe(cart)              
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
 
