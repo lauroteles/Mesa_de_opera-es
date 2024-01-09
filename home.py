@@ -16,6 +16,8 @@ import xlsxwriter as xlsxwriter
 import datetime
 import time
 
+
+
 t0 = time.perf_counter()
 
 st.set_page_config(layout='wide')
@@ -1239,7 +1241,6 @@ if selecionar == 'Analitico':
         #df2 = df.melt(id_vars=['PRODUTO'], var_name='VALOR LÍQUIDO', value_name='Valor')
         return df
     mostrar_rv_x_rf = st.toggle('Ver Proporção Renda Fixa vs Renda Variável')
-    mostrar_tabelas = st.toggle('Ver tabelas')
     if mostrar_rv_x_rf:
         carteira_arr_media_rv_rf = criando_graficos_rf_rv(carteira_arr,'Arrojada',cafe_colors)
         carteira_mod_media_rv_rf = criando_graficos_rf_rv(carteira_mod,'Moderada',night_colors)
@@ -1278,74 +1279,80 @@ if selecionar == 'Analitico':
     figura_carteira_MOD_PREV_MOD = criando_graficos(carteira_MOD_PREV_MOD,padronizacao_dos_graficos,'Carteira Moderada - Previdencia - Moderada')
     figura_carteira_INC_PREV_MOD = criando_graficos(carteira_INC_PREV_MOD,padronizacao_dos_graficos,'Carteira Income - Previdencia - Moderada')
 
-    lista_dfs =[carteira_arr,carteira_mod,carteira_con]
-    lista_dfs2 = [carteira_equity,carteira_inc,carteira_dividendos]
-    lista_dfs3 = [carteira_small,carteira_FII,carteira_INC_PREV_MOD,carteira_MOD_PREV_MOD]
-
-
-    lista_de_variaveis_para_criar_grafico_col1 = [
-        figura_carteira_inc,
-        figura_carteira_con,
-        figura_carteira_mod,]
-
-    lista_de_variaveis_para_criar_grafico_col2 =[figura_carteira_arr,
-        figura_carteira_equity,
-        figura_carteira_FII,]
-    
-    lista_de_variaveis_para_criar_grafico_col3 =[figura_carteira_small,
-        figura_carteira_dividendos,
-        figura_carteira_MOD_PREV_MOD,
-        figura_carteira_INC_PREV_MOD]
-    
-
-    
-
-    col1,col2,col3 = st.columns(3)
-
-    with col1:  
-        for variaveis in lista_de_variaveis_para_criar_grafico_col1:
-            st.plotly_chart(variaveis)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-        if mostrar_tabelas:                
-            for cart in lista_dfs:
-                cart['Porcentagem'] = cart['Porcentagem'].map(lambda x: f"{x:.2f}")
-                st.dataframe(cart)  
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+    col1,col2 = st.columns(2)
+    with col1: 
+        carteira_income = st.toggle('Income',key='ver_income')
+        carteira_conse = st.toggle('Conservadora',key='ver_conservadora')
+        carteira_moderada_tog = st.toggle('Moderada',key='ver_mdoerada')
+        carteira_Arr = st.toggle('Arrojada',key='ver_arrojada')
+        carteira_Eqt = st.toggle('Equity',key='ver_eqt') 
+        st.markdown("<br>",unsafe_allow_html=True)
+        st.markdown("<br>",unsafe_allow_html=True)
     with col2:  
-        for variaveis in lista_de_variaveis_para_criar_grafico_col2:
-            st.plotly_chart(variaveis)          
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<br>", unsafe_allow_html=True)
-        if mostrar_tabelas:   
-            for cart in lista_dfs2:
-                cart['Porcentagem'] = cart['Porcentagem'].map(lambda x: f"{x:.2f}")
-                st.dataframe(cart)      
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("<br>", unsafe_allow_html=True)    
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-    with col3:  
-        for variaveis in lista_de_variaveis_para_criar_grafico_col3:
-            st.plotly_chart(variaveis)
-        if mostrar_tabelas:    
-            for cart in lista_dfs3:
-                cart['Porcentagem'] = cart['Porcentagem'].map(lambda x: f"{x:.2f}")
-                st.dataframe(cart)              
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+        carteira_fii_tg = st.toggle('FII',key='ver_fiis')
+        carteira_sml = st.toggle('Small',key='ver_smlss')
+        carteira_dividendos_tg = st.toggle('Dividendos',key='ver_dividendos')
+        carteira_mod_prev = st.toggle('Moderada Previdencia',key='ver_mod_prev')
+        carteira_inc_prev = st.toggle('Income Previdencia',key='ver_inc')
+        st.markdown("<br>",unsafe_allow_html=True)
+        st.markdown("<br>",unsafe_allow_html=True)
+
+ajustas_coluna_de_porcentagem = [
+    carteira_inc,carteira_con,carteira_mod,
+    carteira_arr,carteira_equity,
+    carteira_FII,carteira_small,carteira_dividendos,
+    carteira_MOD_PREV_MOD,carteira_INC_PREV_MOD
+]
+for dfs in ajustas_coluna_de_porcentagem:
+    dfs['Porcentagem'] = dfs['Porcentagem'].apply(lambda x: f'{x:.2f}%' )
 
 
+if carteira_income:
+    with col1:st.plotly_chart(figura_carteira_inc,use_container_width=True)
+    with col2:st.dataframe(carteira_inc)
+
+elif carteira_conse:
+    with col1:st.plotly_chart(figura_carteira_con,use_container_width=True)
+    with col2:st.dataframe(carteira_con)
+
+elif carteira_moderada_tog:
+    with col1:st.plotly_chart(figura_carteira_mod,use_container_width=True)
+    with col2:st.dataframe(carteira_mod)
+
+elif carteira_Arr:
+    with col1:st.plotly_chart(figura_carteira_arr,use_container_width=True)
+    with col2:st.dataframe(carteira_arr)
+
+elif carteira_Eqt:
+    with col1:st.plotly_chart(figura_carteira_equity,use_container_width=True)
+    with col2:st.dataframe(carteira_equity)
+
+elif carteira_fii_tg:
+    with col1:st.plotly_chart(figura_carteira_FII,use_container_width=True)
+    with col2:st.dataframe(carteira_FII)
+
+elif carteira_sml:
+    with col1:st.plotly_chart(figura_carteira_small,use_container_width=True)
+    with col2:st.dataframe(carteira_small)
+
+elif carteira_dividendos_tg:
+    with col1:st.plotly_chart(figura_carteira_dividendos,use_container_width=True)
+    with col2:st.dataframe(carteira_dividendos)
+
+elif carteira_inc_prev:
+    with col1:st.plotly_chart(figura_carteira_INC_PREV_MOD,use_container_width=True)
+    with col2:st.dataframe(carteira_INC_PREV_MOD)
+
+elif carteira_mod_prev:
+    with col1:st.plotly_chart(figura_carteira_MOD_PREV_MOD,use_container_width=True)
+    with col2:st.dataframe(carteira_MOD_PREV_MOD)
+
+
+
+
+    
+
+    
 
 
 
